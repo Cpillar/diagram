@@ -292,7 +292,7 @@ class DiagramCanvas extends AbsolutePanel implements ExpressionColumnChangedHand
                     Image image = new Image();
                     image.setUrl(ctx.getCanvas().toDataUrl("image/png"));
                     final ImageDownloadDialog downloadDialogBox = new ImageDownloadDialog(image, "png",diagramStId);
-                    downloadDialogBox.show();
+                    downloadDialogBox.showCentered();
                     cleanCanvas(ctx);
                 }
             }
@@ -712,6 +712,7 @@ class DiagramCanvas extends AbsolutePanel implements ExpressionColumnChangedHand
             case "Compartment":     rtn = this.compartments;        break;
             case "Protein":         rtn = this.entities;            break;
             case "Chemical":        rtn = this.entities;            break;
+            case "ChemicalDrug":    rtn = this.entities;            break;
             case "Reaction":        rtn = this.reactions;           break;
             case "Complex":         rtn = this.entities;            break;
             case "Entity":          rtn = this.entities;            break;

@@ -83,7 +83,7 @@ public abstract class SVGUtil {
     public static void addClassName(OMElement element, String className) {
         if(element != null) {
             String classAtr = element.getAttribute(SVGConstants.SVG_CLASS_ATTRIBUTE);
-            if(!classAtr.contains(className)) {
+            if(classAtr != null && !classAtr.contains(className)) {
                 StringBuilder sb = new StringBuilder(classAtr);
                 sb.append(" ").append(className);
                 element.setAttribute(SVGConstants.SVG_CLASS_ATTRIBUTE, sb.toString());
@@ -101,7 +101,7 @@ public abstract class SVGUtil {
     }
 
     public static void addInlineStyle(OMSVGSVGElement svg, String className, String cssStyle){
-        OMNodeList<OMElement> styles = svg.getElementsByTagName("style");
+        OMNodeList<OMElement> styles = svg.getElementsByTagName(SVGConstants.SVG_STYLE_TAG);
         if (styles!=null && styles.getLength()>0) {
             OMSVGStyleElement style = (OMSVGStyleElement) styles.getItem(0);
             OMNode omNode  = style.getFirstChild();
@@ -116,7 +116,7 @@ public abstract class SVGUtil {
     @SuppressWarnings("ConstantConditions")
     public static OMSVGDefsElement getOrCreateDefs(OMSVGSVGElement svg, OMSVGDefsElement baseDefs) {
         OMSVGDefsElement rtn;
-        OMNodeList<OMElement> defs = svg.getElementsByTagName("defs");
+        OMNodeList<OMElement> defs = svg.getElementsByTagName(SVGConstants.SVG_DEFS_TAG);
         if (defs != null && defs.getLength() > 0) {
             rtn = (OMSVGDefsElement) defs.getItem(0);
         } else {

@@ -8,6 +8,7 @@ import org.reactome.web.diagram.data.interactors.model.images.InteractorImages;
 import org.reactome.web.diagram.data.interactors.raw.RawInteractor;
 import org.reactome.web.diagram.search.SearchResultObject;
 import org.reactome.web.diagram.util.MapSet;
+import org.reactome.web.pwp.model.client.factory.SchemaClass;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -102,6 +103,11 @@ public class InteractorSearchResult implements Comparable<InteractorSearchResult
     }
 
     @Override
+    public SchemaClass getSchemaClass() {
+        return SchemaClass.getSchemaClass("Interactor");
+    }
+
+    @Override
     public void setSearchDisplay(String[] searchTerms) {
         if (alias != null) {
             primary = alias;
@@ -121,7 +127,7 @@ public class InteractorSearchResult implements Comparable<InteractorSearchResult
         }
         sb.delete(sb.length() - 1, sb.length()).append(")");
         String term = sb.toString();
-        /**
+        /*
          * (term1|term2)    : term is between "(" and ")" because we are creating a group, so this group can
          *                    be referred later.
          * gi               : global search and case insensitive

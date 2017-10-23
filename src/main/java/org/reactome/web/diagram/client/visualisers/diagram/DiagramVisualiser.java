@@ -117,6 +117,7 @@ public class DiagramVisualiser extends SimplePanel implements Visualiser,
         eventBus.addHandler(DiagramProfileChangedEvent.TYPE, this);
         eventBus.addHandler(InteractorProfileChangedEvent.TYPE, this);
         eventBus.addHandler(ThumbnailAreaMovedEvent.TYPE, this);
+        eventBus.addHandler(StructureImageLoadedEvent.TYPE, this);
     }
 
     private void doUpdate() {
@@ -635,6 +636,20 @@ public class DiagramVisualiser extends SimplePanel implements Visualiser,
         eventBus.fireEventFromSource(new DiagramZoomEvent(factor, visibleArea), this);
         thumbnail.diagramZoomEvent(visibleArea);
         forceDraw = true;  //IMPORTANT: Please leave it at the very end after the event firing
+    }
+
+    @Override
+    public void refreshHoveredItem() {
+        DiagramInteractor hoveredInteractor = getHoveredInteractor();
+        canvas.setCursor(hoveredInteractor == null ? Style.Cursor.DEFAULT : Style.Cursor.POINTER);
+        resetHighlight(true); // This resets the layout highlight -> please note that the method is defined in the DiagramViewer interface
+        if (hoveredInteractor == null)  { // It is needed otherwise the getHoveredDiagramObject will find a possible diagram layout object behind the interactor
+            HoveredItem hovered = getHoveredDiagramObject();
+            DiagramObject item = hovered != null ? hovered.getHoveredObject() : null;
+            canvas.setCursor(item == null ? Style.Cursor.DEFAULT : Style.Cursor.POINTER);
+            highlightHoveredItem(hovered);
+        }
+        highlightInteractor(hoveredInteractor); //if hovered i
     }
 
     public int getViewportWidth() {

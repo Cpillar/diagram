@@ -2,6 +2,7 @@ package org.reactome.web.diagram.thumbnail.ehld;
 
 import com.google.gwt.canvas.client.Canvas;
 import com.google.gwt.canvas.dom.client.Context2d;
+import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.Style;
 import com.google.gwt.event.dom.client.*;
@@ -60,11 +61,7 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
 
     @Override
     public void contentRequested() {
-        if(svg != null) {
-            getElement().getFirstChild().removeFromParent();
-            svg = null;
-            cleanFrame();
-        }
+        clearThumbnail();
     }
 
     @Override
@@ -119,7 +116,12 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
 
         OMSVGRect svgSize = getSVGInitialSize();
         double factor = HEIGHT / (svgSize.getHeight() + FRAME);
-        setSize((int) Math.ceil(factor * (svgSize.getWidth() + FRAME)), HEIGHT);
+        int width = (int) Math.ceil(factor * (svgSize.getWidth() + FRAME));
+        setSize(width, HEIGHT);
+
+        //Get viewport
+        OMSVGRect viewportBB = svg.createSVGRect();
+        svg.getViewBox().getBaseVal().assignTo(viewportBB);
 
         svg.removeAttribute(SVGConstants.SVG_VIEW_BOX_ATTRIBUTE);
         svg.removeAttribute(SVGConstants.SVG_ENABLE_BACKGROUND_ATTRIBUTE);
@@ -133,20 +135,30 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
             div.replaceChild(svg.getElement(), div.getFirstChild());
         }
 
+        this.setVisible(true);
+
         // Identify all layers by getting all top-level g elements
-        svgLayers = getRootLayers();
+        svgLayers = getRootLayers(svg);
 
         // Append the filters
         SVGUtil.getOrCreateDefs(svg, baseDefs);
 
+        // The following is to avoid the bug (Windows 10) where the SVG appears cropped
+        if(svg != null) {
+            svg.setWidth(Style.Unit.PX, getOffsetWidth());
+            svg.setHeight(Style.Unit.PX, getOffsetHeight());
+        }
+
         // Set initial translation matrix
         initialTM = getInitialCTM();
         ctm = initialTM;
-
-        initialBB = svg.getBBox();
-        OMSVGMatrix fitTM = calculateFitAll(FRAME);
+        initialBB = viewportBB;
+        OMSVGMatrix fitTM = calculateFitAll(FRAME, width, HEIGHT);
         ctm = initialTM.multiply(fitTM);
         applyCTM();
+
+        // The following is to avoid the bug (Windows 10) where the SVG appears cropped
+        Scheduler.get().scheduleDeferred(() -> svg.removeAttribute(SVGConstants.SVG_VIEW_BOX_ATTRIBUTE));
     }
 
     @Override
@@ -175,7 +187,8 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
             if (from != null && to != null) {
                 //Do not change any property of the status since it will be updated once the corresponding
                 //action is performed in the main view and notified (thumbnail status changes on demand)
-                OMSVGPoint padding = from.substract(p.substract(delta)).scale(ctm.inverse().getA());
+                OMSVGPoint padding = svg.createSVGPoint(from.substract(p.substract(delta)).scale(0.4f/ctm.getA()));
+                //This solution is not as accurate as scaling with 1/ctm.getA() but it reduces the shaky effect
                 eventBus.fireEventFromSource(new SVGThumbnailAreaMovedEvent(padding), this);
             }
         } else {
@@ -247,6 +260,7 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
     }
 
     private void applyCTM() {
+        if (ctm == null) return;
         sb.setLength(0);
         sb.append("matrix(").append(ctm.getA()).append(",").append(ctm.getB()).append(",").append(ctm.getC()).append(",")
                 .append(ctm.getD()).append(",").append(ctm.getE()).append(",").append(ctm.getF()).append(")");
@@ -259,6 +273,15 @@ public class SVGThumbnail extends AbstractSVGPanel implements Thumbnail, Context
 
     private void cleanFrame() {
         frame.getContext2d().clearRect(0, 0, frame.getOffsetWidth(), frame.getOffsetHeight());
+    }
+
+    private void clearThumbnail() {
+        if(svg != null) {
+            getElement().getFirstChild().removeFromParent();
+            svg = null;
+            cleanFrame();
+        }
+        this.setVisible(false);
     }
 
     private Canvas createCanvas(int width, int height) {

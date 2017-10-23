@@ -4,12 +4,15 @@ import com.google.gwt.core.client.Scheduler;
 import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.dom.client.Style;
+import com.google.gwt.dom.client.Touch;
 import com.google.gwt.event.dom.client.*;
 import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.i18n.client.NumberFormat;
+import com.google.gwt.user.client.Timer;
 import org.reactome.web.analysis.client.model.EntityStatistics;
 import org.reactome.web.analysis.client.model.ExpressionSummary;
 import org.reactome.web.analysis.client.model.PathwaySummary;
+import org.reactome.web.diagram.client.ViewerContainer;
 import org.reactome.web.diagram.client.visualisers.Visualiser;
 import org.reactome.web.diagram.client.visualisers.ehld.animation.SVGAnimation;
 import org.reactome.web.diagram.client.visualisers.ehld.animation.SVGAnimationHandler;
@@ -38,10 +41,11 @@ import org.reactome.web.diagram.thumbnail.Thumbnail;
 import org.reactome.web.diagram.thumbnail.ehld.SVGThumbnail;
 import org.reactome.web.diagram.util.Console;
 import org.reactome.web.diagram.util.svg.SVGUtil;
-import org.reactome.web.pwp.model.classes.DatabaseObject;
-import org.reactome.web.pwp.model.classes.Pathway;
-import org.reactome.web.pwp.model.factory.DatabaseObjectFactory;
-import org.reactome.web.pwp.model.handlers.DatabaseObjectCreatedHandler;
+import org.reactome.web.pwp.model.client.classes.DatabaseObject;
+import org.reactome.web.pwp.model.client.classes.Pathway;
+import org.reactome.web.pwp.model.client.common.ContentClientHandler;
+import org.reactome.web.pwp.model.client.content.ContentClient;
+import org.reactome.web.pwp.model.client.content.ContentClientError;
 import org.vectomatic.dom.svg.*;
 import org.vectomatic.dom.svg.utils.DOMHelper;
 import org.vectomatic.dom.svg.utils.SVGConstants;
@@ -57,10 +61,10 @@ import static org.reactome.web.diagram.events.CanvasExportRequestedEvent.Option;
  */
 @SuppressWarnings("All")
 public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
-        AnalysisProfileChangedHandler, DatabaseObjectCreatedHandler,
+        AnalysisProfileChangedHandler, ContentClientHandler.ObjectLoaded<DatabaseObject>,
         MouseOverHandler, MouseOutHandler, MouseDownHandler, MouseMoveHandler, MouseUpHandler, MouseWheelHandler,
-        DoubleClickHandler, ContextMenuHandler,
-        SVGAnimationHandler, SVGThumbnailAreaMovedHandler {
+        DoubleClickHandler, ContextMenuHandler, SVGAnimationHandler, SVGThumbnailAreaMovedHandler,
+        TouchStartHandler, TouchMoveHandler, TouchEndHandler {
 
     private static final String OVERLAY_CLONE = "OVERLAYCLONE-";
     private static final String OVERLAY_BASE = "OVERLAYBASE-";
@@ -89,6 +93,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     private OMElement selected;
     private OMElement hovered;
     private OMSVGPoint origin;
+    private Double touchDistance;
     private Set<OMElement> flagged;
 
     private SVGAnimation animation;
@@ -100,10 +105,16 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     private SVGContextPanel contextPanel;
     private Thumbnail thumbnail;
 
+    private Timer tapTimer = new Timer() {
+        @Override
+        public void run() { /* Nothing here */ }
+    };
+
     public SVGVisualiser(EventBus eventBus) {
         super(eventBus);
         this.getElement().addClassName("pwp-SVGPanel");
         flagged = new HashSet<>();
+
         initHandlers();
 //        setSize(width, height);
     }
@@ -118,7 +129,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
 
             this.viewportWidth = getParent().getOffsetWidth();
             this.viewportHeight = getParent().getOffsetHeight();
-//            setSize(viewportWidth, viewportHeight);
+            setSize(viewportWidth, viewportHeight);
         }
     }
 
@@ -179,6 +190,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
             if (svgEntity != null && hovered != svgEntity.getHoverableElement()) {
                 resetHighlight(false);
                 highlightElement(svgEntity.getHoverableElement());
+                updateUI();
                 thumbnail.setHoveredItem(svgEntity.getHoverableElement().getId());
                 if (notify) {
                     eventBus.fireEventFromSource(new GraphObjectHoveredEvent(graphObject), this);
@@ -195,6 +207,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         if (context == null) return rtn;
         if (hovered != null) {
             unHighlightElement(hovered);
+            updateUI();
             thumbnail.setHoveredItem(null);
             if (notify) {
                 eventBus.fireEventFromSource(new GraphObjectHoveredEvent(), this);
@@ -276,15 +289,21 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     }
 
     @Override
-    public void onDatabaseObjectLoaded(DatabaseObject databaseObject) {
+    public void onObjectLoaded(DatabaseObject databaseObject) {
         if(databaseObject instanceof Pathway) {
             Pathway p = (Pathway) databaseObject;
-            eventBus.fireEventFromSource(new ContentRequestedEvent(p.getDbId() + ""), this);
+            eventBus.fireEventFromSource(new ContentRequestedEvent(p.getReactomeIdentifier()), this);
         }
     }
 
     @Override
-    public void onDatabaseObjectError(Throwable exception) {
+    public void onContentClientException(Type type, String message) {
+        Console.error("Error getting pathway information...");
+        //TODO: Decide what to do in this case
+    }
+
+    @Override
+    public void onContentClientError(ContentClientError error) {
         Console.error("Error getting pathway information...");
         //TODO: Decide what to do in this case
     }
@@ -293,10 +312,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     public void onDoubleClick(DoubleClickEvent event) {
         event.preventDefault(); event.stopPropagation();
         OMElement el = (OMElement) event.getSource();
-        String stableId = SVGUtil.keepStableId(el.getAttribute("id"));
-        if(stableId != null) {
-            DatabaseObjectFactory.get(stableId, this);
-        }
+        openPathway(el);
     }
 
     @Override
@@ -376,7 +392,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         if (!toHighlight.equals(hovered)) {
             resetHighlight(false);
             highlightElement(toHighlight);
-            applyCTM(false);
+            updateUI();
             thumbnail.setHoveredItem(toHighlight.getId());
             notifyHovering(toHighlight.getId());
         }
@@ -406,7 +422,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         OMElement toUnHighlight = entity.getHoverableElement();
         if(el.equals(toUnHighlight)) {
             unHighlightElement(toUnHighlight);
-            applyCTM(false);
+            updateUI();
             thumbnail.setHoveredItem(null);
             notifyHovering(null);
         }
@@ -418,11 +434,131 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
 
     @Override
     public void onMouseWheel(MouseWheelEvent event) {
-        event.preventDefault(); event.stopPropagation();
+        //Continue scrolling has priority to ehld user action
+        if(ViewerContainer.windowScrolling.isRunning()) return;
+
+        event.preventDefault();
+        event.stopPropagation();
         contextPanel.hide();
         float delta = event.getDeltaY() * 0.020f;
         float zoom = (1 - delta) > 0 ? (1 - delta) : 1;
         zoom(zoom, getTranslatedPoint(event));
+    }
+
+    @Override
+    public void onTouchEnd(TouchEndEvent event) {
+        //Continue scrolling has priority to ehld user action
+        if(ViewerContainer.windowScrolling.isRunning()) return;
+
+        event.preventDefault(); event.stopPropagation();
+        OMElement el = (OMElement) event.getSource();
+        if (allowSelection) {
+            String elementId = el.getId();
+            boolean isAnnotated = SVGUtil.isAnnotated(elementId);
+            if (!tapTimer.isRunning()) {                            // Single tap
+                tapTimer.schedule(300);
+                if (isAnnotated && !Objects.equals(selected, el)) {
+                    thumbnail.setSelectedItem(elementId);
+                    setSelectedElement(el);
+                    notifySelection(elementId);
+                } else if (!isAnnotated && selected != null) {
+                    resetSelectedElement();
+                    thumbnail.setSelectedItem(null);
+                    notifySelection(null);
+                }
+
+            } else {                                               // Double tap
+                tapTimer.cancel();
+                if (isAnnotated) {
+                    openPathway(el);
+                }
+            }
+        }
+        origin = null;
+        touchDistance = null;
+    }
+
+    @Override
+    public void onTouchMove(TouchMoveEvent event) {
+        //Continue scrolling has priority to ehld user action
+        if(ViewerContainer.windowScrolling.isRunning()) return;
+
+        event.preventDefault(); event.stopPropagation();
+        Element viewport = this.getElement();
+        int numberOfTouches =  event.getTouches().length();
+
+        if (numberOfTouches == 1) {             // Panning
+            Touch touch = event.getTouches().get(0);
+
+            OMSVGPoint end = getTranslatedPoint(
+                    touch.getRelativeX(viewport),
+                    touch.getRelativeY(viewport)
+            );
+
+            if (origin == null) {
+                origin = end;
+            } else {
+                Coordinate delta = CoordinateFactory.get(end.getX() - origin.getX(), end.getY() - origin.getY());
+                // On mouse move is sometimes called for delta 0 (we cannot control that, but only consider it)
+                if (isDeltaValid(delta)) {
+                    OMSVGMatrix newMatrix = svg.createSVGMatrix().translate(delta.getX().floatValue(), delta.getY().floatValue());
+                    ctm = ctm.multiply(newMatrix);
+                    applyCTM(true);
+                    allowSelection = false;             // Selection is denied in case of panning
+                }
+            }
+        } else if (numberOfTouches == 2) {              // Zooming in and out
+            Touch touch1 = event.getTouches().get(0);
+            Touch touch2 = event.getTouches().get(1);
+
+            Coordinate delta = CoordinateFactory.get(
+                    touch2.getRelativeX(viewport) - touch1.getRelativeX(viewport),
+                    touch2.getRelativeY(viewport) - touch1.getRelativeY(viewport)
+            );
+            Double newDistance = Math.sqrt(delta.getX() * delta.getX() + delta.getY() * delta.getY());
+
+            if (touchDistance != null) {
+                Double factor = newDistance/touchDistance;
+                zoom(
+                        factor.floatValue(),
+                        getTranslatedPoint(         // Middle point between the 2 fingers is the zoom focus
+                                touch1.getRelativeX(viewport) + delta.getX().intValue()/2 ,
+                                touch1.getRelativeY(viewport) + delta.getY().intValue()/2
+                        )
+                );
+            }
+            touchDistance = newDistance;
+            allowSelection = false;                     // Selection is denied in case of zooming
+        }
+    }
+
+    @Override
+    public void onTouchStart(TouchStartEvent event) {
+        //Continue scrolling has priority to ehld user action
+        if(ViewerContainer.windowScrolling.isRunning()) return;
+
+        event.preventDefault(); event.stopPropagation();
+        Element viewport = this.getElement();
+        if (animation != null) animation.cancel(); // Cancel any animation running
+        int numberOfTouches =  event.getTouches().length();
+        if (numberOfTouches == 1) {
+            Touch touch = event.getTouches().get(0);
+
+            this.origin = getTranslatedPoint(
+                    touch.getRelativeX(viewport),
+                    touch.getRelativeY(viewport)
+            ); // Get the origin touch
+            allowSelection = true;
+        } else if (numberOfTouches == 2) {
+            Touch touch1 = event.getTouches().get(0);
+            Touch touch2 = event.getTouches().get(1);
+
+            Coordinate delta = CoordinateFactory.get(
+                    touch2.getRelativeX(viewport) - touch1.getRelativeX(viewport),
+                    touch2.getRelativeY(viewport) - touch1.getRelativeY(viewport)
+            );
+            this.touchDistance = Math.sqrt(delta.getX() * delta.getX() + delta.getY() * delta.getY());
+        }
     }
 
     @Override
@@ -444,6 +580,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     }
 
     private void applyCTM(boolean fireEvent) {
+        if (ctm == null) return;
         sb.setLength(0);
         sb.append("matrix(").append(ctm.getA()).append(",").append(ctm.getB()).append(",").append(ctm.getC()).append(",")
                 .append(ctm.getD()).append(",").append(ctm.getE()).append(",").append(ctm.getF()).append(")");
@@ -558,7 +695,6 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
 
     private void fitALL(boolean animated) {
         OMSVGMatrix fitTM = calculateFitAll(FRAME);
-
         if(!SVGUtil.areEqual(ctm, fitTM)) {
             if (animated) {
                 animation = new SVGAnimation(this, ctm);
@@ -710,6 +846,13 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         createOrUpdateOverlayElement(stId, overlayColour, baseColour);
     }
 
+    private void openPathway(OMElement el) {
+        String stableId = SVGUtil.keepStableId(el.getAttribute("id"));
+        if(stableId != null) {
+            ContentClient.query(stableId, this);
+        }
+    }
+
     private void showAnalysisInfo(){
         if (analysisStatus!=null) {
             for (GraphPathway graphPathway : context.getContent().getEncapsulatedPathways()) {
@@ -741,6 +884,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
 
                 info.removeAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE);
                 info.setAttribute(SVGConstants.CSS_ALIGNMENT_BASELINE_PROPERTY, "middle");
+                info.setAttribute(SVGConstants.CSS_DOMINANT_BASELINE_PROPERTY, "middle");   // Especially for Firefox
                 info.setAttribute(SVGConstants.SVG_TEXT_ANCHOR_ATTRIBUTE, "middle");
                 info.setAttribute(SVGConstants.SVG_X_ATTRIBUTE, center.getX() + "");
                 info.setAttribute(SVGConstants.SVG_Y_ATTRIBUTE, center.getY() + "");
@@ -761,6 +905,20 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         }
     }
 
+    private void updateUI() {
+        if (isSafari) {
+            forceRepaint();         //Force reflow and repaint in Safari
+        } else {
+            applyCTM(false); //Normal refresh
+        }
+    }
+
+    private void forceRepaint() {
+        final Style style = getElement().getStyle();
+        style.clearDisplay();
+        Scheduler.get().scheduleDeferred(() -> style.setDisplay(Style.Display.INLINE_BLOCK));
+    }
+
     private void resetSelectedElement() {
         if (selected != null) {
             boolean isFlagged = flagged.contains(selected);
@@ -778,7 +936,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
                 }
             }
             selected = null;
-            applyCTM(false);
+            updateUI();
         }
     }
 
@@ -803,7 +961,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         }
 
         selected = element;
-        applyCTM(false);
+        updateUI();
     }
 
     private void translate(float x, float y) {
@@ -868,10 +1026,14 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
             }
         }
 
+        // Remove title to avoid tooltips appearing in Safari
+        removeTitleFrom(svg);
+
         for (SVGEntity svgEntity : entities.values()) {
             OMElement child = svgEntity.getHoverableElement();
             if(child!=null) {
                 child.addDomHandler(SVGVisualiser.this, MouseUpEvent.getType());
+                child.addDomHandler(SVGVisualiser.this, TouchEndEvent.getType());
                 child.addDomHandler(SVGVisualiser.this, MouseOverEvent.getType());
                 child.addDomHandler(SVGVisualiser.this, MouseOutEvent.getType());
                 child.addDomHandler(SVGVisualiser.this, DoubleClickEvent.getType());
@@ -887,7 +1049,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         }
 
         // Identify all layers by getting all top-level g elements
-        svgLayers = getRootLayers();
+        svgLayers = getRootLayers(svg);
 
         // Clone and attach defs (filters - clipping paths) to the root SVG structure
         defs = (OMSVGDefsElement) SVGUtil.getOrCreateDefs(svg, baseDefs);
@@ -901,6 +1063,14 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
         svg.addMouseMoveHandler(this);
         svg.addMouseUpHandler(this);
 
+        svg.addTouchStartHandler(this);
+        svg.addTouchMoveHandler(this);
+        svg.addTouchEndHandler(this);
+
+        //Get viewport
+        OMSVGRect viewportBB = svg.createSVGRect();
+        svg.getViewBox().getBaseVal().assignTo(viewportBB);
+
         // Remove viewbox and set size
         svg.removeAttribute(SVGConstants.SVG_VIEW_BOX_ATTRIBUTE);
         setSize(getOffsetWidth(), getOffsetHeight());
@@ -912,12 +1082,10 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
             div.appendChild(svg.getElement());
         }
 
-        // Render thumbnail
-        thumbnail.diagramRendered(content, null);
-
         // Set initial translation matrix
         initialTM = getInitialCTM();
-        initialBB = svg.getBBox();
+        initialBB = viewportBB;
+
         if(context.getSvgStatus().getCTM() == null) {
             ctm = initialTM;
             fitALL(false);
@@ -925,6 +1093,18 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
             ctm = context.getSvgStatus().getCTM();
             applyCTM(false);
         }
+
+        // The following is to avoid the bug (Windows 10) where the SVG appears cropped
+        if(svg != null) {
+            svg.setWidth(Style.Unit.PX, getOffsetWidth());
+            svg.setHeight(Style.Unit.PX, getOffsetHeight());
+        }
+
+        // Render thumbnail
+        thumbnail.diagramRendered(content, null);
+
+        // The following is to avoid the bug (Windows) where the SVG appears cropped
+        svg.removeAttribute(SVGConstants.SVG_VIEW_BOX_ATTRIBUTE);
     }
 
     @Override
@@ -1021,7 +1201,7 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
                 }
             }
         }
-        applyCTM(false);
+        updateUI();
     }
 
     @Override
@@ -1030,6 +1210,10 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
             unFlagElement(item);
         }
         flagged = new HashSet<>();
-        applyCTM(false);
+        updateUI();
+    }
+
+    private boolean isDeltaValid(Coordinate delta) {
+        return delta.getX() >= 2  || delta.getX() <= -2  || delta.getY() >= 2 || delta.getY() <= -2;
     }
 }

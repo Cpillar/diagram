@@ -10,31 +10,32 @@ import com.google.gwt.user.client.ui.*;
 import org.reactome.web.diagram.client.DiagramFactory;
 import org.reactome.web.diagram.controls.navigation.ControlAction;
 import org.reactome.web.diagram.controls.top.common.AbstractMenuDialog;
+import org.reactome.web.diagram.data.Context;
+import org.reactome.web.diagram.data.graph.model.GraphEvent;
 import org.reactome.web.diagram.data.graph.model.GraphObject;
-import org.reactome.web.diagram.data.graph.model.GraphPathway;
-import org.reactome.web.diagram.data.graph.model.GraphSubpathway;
-import org.reactome.web.diagram.events.ContentLoadedEvent;
-import org.reactome.web.diagram.events.ControlActionEvent;
-import org.reactome.web.diagram.events.GraphObjectSelectedEvent;
-import org.reactome.web.diagram.events.IllustrationSelectedEvent;
+import org.reactome.web.diagram.events.*;
 import org.reactome.web.diagram.handlers.ContentLoadedHandler;
+import org.reactome.web.diagram.handlers.ContentRequestedHandler;
 import org.reactome.web.diagram.handlers.ControlActionHandler;
 import org.reactome.web.diagram.handlers.GraphObjectSelectedHandler;
 import org.reactome.web.diagram.util.Console;
-import org.reactome.web.pwp.model.classes.DatabaseObject;
-import org.reactome.web.pwp.model.classes.Figure;
-import org.reactome.web.pwp.model.classes.Pathway;
-import org.reactome.web.pwp.model.factory.DatabaseObjectFactory;
-import org.reactome.web.pwp.model.handlers.DatabaseObjectCreatedHandler;
-import org.reactome.web.pwp.model.handlers.DatabaseObjectLoadedHandler;
+import org.reactome.web.pwp.model.client.classes.DatabaseObject;
+import org.reactome.web.pwp.model.client.classes.Event;
+import org.reactome.web.pwp.model.client.classes.Figure;
+import org.reactome.web.pwp.model.client.common.ContentClientHandler;
+import org.reactome.web.pwp.model.client.content.ContentClient;
+import org.reactome.web.pwp.model.client.content.ContentClientError;
+
+import static org.reactome.web.diagram.data.content.Content.Type.SVG;
 
 /**
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
  */
 public class DiagramIllustrations extends AbstractMenuDialog implements ControlActionHandler,
-        ContentLoadedHandler, GraphObjectSelectedHandler {
+        ContentLoadedHandler, ContentRequestedHandler, GraphObjectSelectedHandler {
 
     private EventBus eventBus;
+    private Context context;
 
     private FlowPanel main = new FlowPanel();
     private FlowPanel other = new FlowPanel();
@@ -59,21 +60,28 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
     @Override
     public void onContentLoaded(ContentLoadedEvent event) {
         initialise();
-        setIllustrations(event.getContext().getContent().getDbId(), main);
+        context = event.getContext();
+        if(!context.getContent().getType().equals(SVG)) {
+            setIllustrations(context.getContent().getDbId(), main);
+        } else {
+            main.add(getErrorMsg("No illustrations found"));
+        }
+    }
+
+    @Override
+    public void onContentRequested(ContentRequestedEvent event) {
+        context = null;
     }
 
     @Override
     public void onGraphObjectSelected(GraphObjectSelectedEvent event) {
-        GraphObject object = event.getGraphObject();
-        Long dbId = null;
-        if (object instanceof GraphPathway) {
-            GraphPathway pathway = (GraphPathway) object;
-            dbId = pathway.getDbId();
-        } else if (object instanceof GraphSubpathway) {
-            GraphSubpathway subpathway = (GraphSubpathway) object;
-            dbId = subpathway.getDbId();
+        if(!context.getContent().getType().equals(SVG)) {
+            GraphObject object = event.getGraphObject();
+            if (object instanceof GraphEvent) {
+                GraphEvent gevent = (GraphEvent) object;
+                setIllustrations(gevent.getDbId(), other);
+            }
         }
-        setIllustrations(dbId, other);
     }
 
     private void setIllustrations(Long dbId, final FlowPanel panel) {
@@ -82,26 +90,31 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
         Label loadingLbl = new Label("Loading...");
         loadingLbl.setStyleName(RESOURCES.getCSS().loading());
         panel.add(loadingLbl);
-        DatabaseObjectFactory.get(dbId, new DatabaseObjectCreatedHandler() {
+        ContentClient.query(dbId, new ContentClientHandler.ObjectLoaded<DatabaseObject>() {
             @Override
-            public void onDatabaseObjectLoaded(DatabaseObject databaseObject) {
-                if (databaseObject instanceof Pathway) {
+            public void onObjectLoaded(DatabaseObject databaseObject) {
+                if (databaseObject instanceof Event) {
                     panel.clear();
-                    final Pathway pathway = (Pathway) databaseObject;
-                    if (pathway.getFigure().isEmpty()) {
-                        panel.add(getIllustration(pathway, null));
+                    final Event event = (Event) databaseObject;
+                    if (event.getFigure().isEmpty()) {
+                        panel.add(getIllustration(event, null));
                     } else {
-                        for (Figure figure : pathway.getFigure()) {
-                            figure.load(new DatabaseObjectLoadedHandler() {
+                        for (Figure figure : event.getFigure()) {
+                            figure.load(new ObjectLoaded() {
                                 @Override
-                                public void onDatabaseObjectLoaded(DatabaseObject databaseObject) {
+                                public void onObjectLoaded(DatabaseObject databaseObject) {
                                     Figure figure = (Figure) databaseObject;
-                                    panel.add(getIllustration(pathway, DiagramFactory.ILLUSTRATION_SERVER + figure.getUrl()));
+                                    panel.add(getIllustration(event, DiagramFactory.ILLUSTRATION_SERVER + figure.getUrl()));
                                 }
 
                                 @Override
-                                public void onDatabaseObjectError(Throwable throwable) {
-                                    Console.error(throwable.getMessage());
+                                public void onContentClientException(Type type, String message) {
+                                    Console.error(message);
+                                }
+
+                                @Override
+                                public void onContentClientError(ContentClientError error) {
+                                    Console.error(error.getReason());
                                 }
                             });
                         }
@@ -110,26 +123,32 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
             }
 
             @Override
-            public void onDatabaseObjectError(Throwable exception) {
+            public void onContentClientException(Type type, String message) {
+                panel.clear();
+                panel.add(getErrorMsg("There was an error retrieving data for the loaded diagram..."));
+            }
+
+            @Override
+            public void onContentClientError(ContentClientError error) {
                 panel.clear();
                 panel.add(getErrorMsg("There was an error retrieving data for the loaded diagram..."));
             }
         });
     }
 
-    private Widget getIllustration(Pathway pathway, final String url) {
+    private Widget getIllustration(Event event, final String url) {
         FlowPanel fp = new FlowPanel();
         fp.setStyleName(RESOURCES.getCSS().illustration());
         if (url != null && !url.isEmpty()) {
             Image image = new Image(RESOURCES.illustration());
             fp.add(image);
-            Label label = new Label(pathway.getDisplayName());
-            label.setText(pathway.getDisplayName());
+            Label label = new Label(event.getDisplayName());
+            label.setText(event.getDisplayName());
             fp.add(label);
             Anchor anchor = new Anchor(SafeHtmlUtils.fromTrustedString(fp.toString()), url);
-            anchor.addClickHandler(event -> {
-                if (!event.isMetaKeyDown() && !event.isControlKeyDown()) event.preventDefault();
-                event.stopPropagation();
+            anchor.addClickHandler(e -> {
+                if (!e.isMetaKeyDown() && !e.isControlKeyDown()) e.preventDefault();
+                e.stopPropagation();
                 hide();
                 eventBus.fireEventFromSource(new IllustrationSelectedEvent(url), DiagramIllustrations.this);
             });
@@ -137,8 +156,8 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
         } else {
             Image image = new Image(RESOURCES.illustrationDisabled());
             fp.add(image);
-            Label label = new Label(pathway.getDisplayName());
-            label.setText("No illustrations for " + pathway.getDisplayName());
+            Label label = new Label(event.getDisplayName());
+            label.setText("No illustrations for " + event.getDisplayName());
             label.setStyleName(RESOURCES.getCSS().error());
             fp.add(label);
             return fp;
@@ -163,12 +182,12 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
     private void initHandlers() {
         this.eventBus.addHandler(ControlActionEvent.TYPE, this);
         this.eventBus.addHandler(ContentLoadedEvent.TYPE, this);
+        this.eventBus.addHandler(ContentRequestedEvent.TYPE, this);
         this.eventBus.addHandler(GraphObjectSelectedEvent.TYPE, this);
     }
 
 
     public static Resources RESOURCES;
-
     static {
         RESOURCES = GWT.create(Resources.class);
         RESOURCES.getCSS().ensureInjected();

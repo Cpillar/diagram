@@ -16,7 +16,7 @@ import org.reactome.web.diagram.handlers.ContentLoadedHandler;
 import org.reactome.web.diagram.handlers.ContentRequestedHandler;
 import org.reactome.web.diagram.handlers.InteractorsRequestCanceledHandler;
 import org.reactome.web.diagram.handlers.InteractorsResourceChangedHandler;
-import org.reactome.web.pwp.model.util.LruCache;
+import org.reactome.web.pwp.model.client.util.LruCache;
 import org.vectomatic.dom.svg.OMSVGSVGElement;
 
 import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
@@ -129,7 +129,10 @@ public class LoaderManager implements SVGLoader.Handler, LayoutLoader.Handler, G
 
     @Override
     public void onLayoutLoaderError(Throwable exception) {
-        eventBus.fireEventFromSource(new DiagramInternalErrorEvent("Diagram data " + exception.getMessage()), this);
+        eventBus.fireEventFromSource(
+                new DiagramInternalErrorEvent("There was a problem while loading the diagram",
+                        "Layout content error: " + exception.getMessage()
+                ), this);
     }
 
     @Override
@@ -144,7 +147,9 @@ public class LoaderManager implements SVGLoader.Handler, LayoutLoader.Handler, G
 
     @Override
     public void onGraphLoaderError(Throwable exception) {
-        eventBus.fireEventFromSource(new DiagramInternalErrorEvent("Graph content " + exception.getMessage()), this);
+        eventBus.fireEventFromSource(
+                new DiagramInternalErrorEvent("There was a problem while loading the diagram",
+                        "Graph content error: " + exception.getMessage()), this);
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.google.gwt.dom.client.Style;
 import com.google.gwt.event.dom.client.MouseEvent;
 import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.i18n.client.NumberFormat;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.AbsolutePanel;
 import com.google.gwt.user.client.ui.Image;
 import org.reactome.web.diagram.client.visualisers.ehld.filters.FilterColour;
@@ -11,6 +12,7 @@ import org.reactome.web.diagram.client.visualisers.ehld.filters.FilterFactory;
 import org.reactome.web.diagram.context.popups.ImageDownloadDialog;
 import org.reactome.web.diagram.util.svg.SVGUtil;
 import org.vectomatic.dom.svg.*;
+import org.vectomatic.dom.svg.utils.SVGConstants;
 
 import java.util.*;
 
@@ -60,20 +62,36 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
 
     protected StringBuilder sb;
 
+    protected boolean isSafari;
+
     public AbstractSVGPanel(EventBus eventBus) {
         this.eventBus = eventBus;
         getElement().getStyle().setBackgroundColor("white");
+
+        String userAgent = Window.Navigator.getUserAgent().toLowerCase();
+        isSafari = userAgent.contains("safari") && !userAgent.contains("chrome");
+
         initFilters();
         sb = new StringBuilder();
     }
 
     public void exportView(String stableId){
         if(svg != null) {
+            OMSVGSVGElement auxSVG = (OMSVGSVGElement) svg.cloneNode(true);
+            auxSVG.setViewBox(initialBB);
+
+            //Reset all transformations
+            sb.setLength(0);
+            sb.append("matrix(").append(initialTM.getA()).append(",").append(initialTM.getB()).append(",").append(initialTM.getC()).append(",")
+                    .append(initialTM.getD()).append(",").append(initialTM.getE()).append(",").append(initialTM.getF()).append(")");
+            for (OMSVGElement svgLayer : getRootLayers(auxSVG)) {
+                svgLayer.setAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE, sb.toString());
+            }
+
             Image image = new Image();
-            String base64 = btoa(svg.getMarkup());
-            image.setUrl("data:image/svg+xml;base64," + base64);
+            image.setUrl("data:image/svg+xml;base64," + btoa(auxSVG.getMarkup()));
             final ImageDownloadDialog downloadDialogBox = new ImageDownloadDialog(image, "svg", stableId);
-            downloadDialogBox.show();
+            downloadDialogBox.showCentered();
         }
     }
 
@@ -85,7 +103,7 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
         //Set the size of the panel
         setWidth(width + "px");
         setHeight(height + "px");
-        //Set the size of the SVG
+        //Set the size of the SVG element itself
         if(svg != null) {
             svg.setWidth(Style.Unit.PX, width);
             svg.setHeight(Style.Unit.PX, height);
@@ -117,6 +135,10 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
     }
 
     protected OMSVGMatrix calculateFitAll(final float frame){
+        return calculateFitAll(frame, getOffsetWidth(), getOffsetHeight());
+    }
+
+    protected OMSVGMatrix calculateFitAll(final float frame, final int width, final int height){
         OMSVGRect bb = svg.createSVGRect();
         // Add a frame around the image
         bb.setX(initialBB.getX() - frame);
@@ -124,19 +146,18 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
         bb.setWidth(initialBB.getWidth() + (frame * 2));
         bb.setHeight(initialBB.getHeight() + (frame * 2));
 
-        float rWidth = getOffsetWidth() / bb.getWidth();
-        float rHeight = getOffsetHeight() / bb.getHeight();
+        float rWidth = width / bb.getWidth();
+        float rHeight = height / bb.getHeight();
         float zoom = (rWidth < rHeight) ? rWidth : rHeight;
 
-        float vpCX = getOffsetWidth() * 0.5f;
-        float vpCY = getOffsetHeight() * 0.5f;
+        float vpCX = width * 0.5f;
+        float vpCY = height * 0.5f;
 
         float newCX = bb.getX() + (bb.getWidth()  * 0.5f);
         float newCY = bb.getY() + (bb.getHeight() * 0.5f);
 
         float corX = vpCX/zoom - newCX;
         float corY = vpCY/zoom - newCY;
-
         return svg.createSVGMatrix().scale(zoom).translate(corX, corY);
     }
 
@@ -158,7 +179,7 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
         return p.matrixTransform(ctm.inverse());
     }
 
-    protected List<OMSVGElement> getRootLayers() {
+    protected List<OMSVGElement> getRootLayers(OMSVGSVGElement svg) {
         // Identify all layers by getting all top-level <g> elements
         List<OMSVGElement> svgLayers = new ArrayList<>();
         OMNodeList<OMNode> cNodes = svg.getChildNodes();
@@ -208,7 +229,7 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
     protected List<OMElement> getAllTextElementsFrom(final OMNode root){
         List<OMElement> rtn = new LinkedList<>();
         OMElement el = (OMElement) root;
-        OMNodeList<OMElement> textEl = el.getElementsByTagName("text");
+        OMNodeList<OMElement> textEl = el.getElementsByTagName(SVGConstants.SVG_TEXT_TAG);
         for (OMElement element : textEl) {
             rtn.add(element);
         }
@@ -218,7 +239,7 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
     protected boolean removeLogoFrom(final OMNode root){
         boolean rtn = false;
         OMElement el = (OMElement) root;
-        OMNodeList<OMElement> targetEl = el.getElementsByTagName("g");
+        OMNodeList<OMElement> targetEl = el.getElementsByTagName(SVGConstants.SVG_G_TAG);
         for (OMElement element : targetEl) {
             if(element.getId().toLowerCase().startsWith("logo")) {
                 element.getElement().removeFromParent();
@@ -228,9 +249,20 @@ public abstract class AbstractSVGPanel extends AbsolutePanel {
         return rtn;
     }
 
+    protected boolean removeTitleFrom(final OMNode root) {
+        boolean rtn = false;
+        OMElement el = (OMElement) root;
+        OMNodeList<OMElement> targetEl = el.getElementsByTagName(SVGConstants.SVG_TITLE_TAG);
+        for (OMElement element : targetEl) {
+            element.getElement().removeFromParent();
+            rtn = true;
+        }
+        return rtn;
+    }
+
     private OMElement getAnalysisInfo(OMElement element){
         OMElement rtn = null;
-        OMNodeList<OMElement> els = element.getElementsByTagName("g");
+        OMNodeList<OMElement> els = element.getElementsByTagName(SVGConstants.SVG_G_TAG);
         if(els!=null) {
             for (OMElement target : els) {
                 if (target.getId().startsWith(ANALYSIS_INFO)) {

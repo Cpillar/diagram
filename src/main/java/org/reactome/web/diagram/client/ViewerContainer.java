@@ -8,6 +8,8 @@ import com.google.gwt.resources.client.CssResource;
 import com.google.gwt.resources.client.ImageResource;
 import com.google.gwt.safehtml.shared.SafeHtml;
 import com.google.gwt.safehtml.shared.SafeHtmlUtils;
+import com.google.gwt.user.client.Timer;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.user.client.ui.AbsolutePanel;
 import com.google.gwt.user.client.ui.Anchor;
 import com.google.gwt.user.client.ui.Image;
@@ -16,6 +18,7 @@ import org.reactome.web.diagram.client.visualisers.Visualiser;
 import org.reactome.web.diagram.client.visualisers.diagram.DiagramVisualiser;
 import org.reactome.web.diagram.client.visualisers.ehld.SVGVisualiser;
 import org.reactome.web.diagram.controls.navigation.NavigationControlPanel;
+import org.reactome.web.diagram.controls.notifications.NotificationsContainer;
 import org.reactome.web.diagram.controls.settings.HideableContainerPanel;
 import org.reactome.web.diagram.controls.settings.RightContainerPanel;
 import org.reactome.web.diagram.controls.top.LeftTopLauncherPanel;
@@ -57,6 +60,11 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     private Anchor watermark;
 
     private String flagTerm;
+
+    public static Timer windowScrolling = new Timer() {
+        @Override
+        public void run() { /* Nothing here */ }
+    };
 
     public ViewerContainer(EventBus eventBus) {
         this.getElement().setClassName("pwp-ViewerContainer");
@@ -119,9 +127,13 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
             this.add(new DiagramInfo(eventBus));
         }
 
+        //Notifications Panel
+        this.add(new NotificationsContainer(eventBus));
+
         //Launcher panels
         this.add(new LeftTopLauncherPanel(eventBus));
         this.add(new RightTopLauncherPanel(eventBus));
+
 
         //Settings panel
         rightContainerPanel.add(new HideableContainerPanel(eventBus));
@@ -329,6 +341,11 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     }
 
     private void initHandlers() {
+        //Only add the window scroll handler if it makes sense
+        if(DiagramFactory.SCROLL_SENSITIVITY > 0) {
+            Window.addWindowScrollHandler(event -> windowScrolling.schedule(DiagramFactory.SCROLL_SENSITIVITY));
+        }
+
         eventBus.addHandler(GraphObjectSelectedEvent.TYPE, this);
 
         eventBus.addHandler(DiagramObjectsFlagRequestedEvent.TYPE, this);
@@ -340,7 +357,6 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
         eventBus.addHandler(IllustrationSelectedEvent.TYPE, this);
 
         eventBus.addHandler(ControlActionEvent.TYPE, this);
-
     }
 
     private void overview(){
