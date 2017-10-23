@@ -91,6 +91,7 @@ public class DiagramColours implements DiagramProfileChangedHandler {
     public enum ProfileType {
         PROFILE_01(ProfileSource.SOURCE.profile01()),
         PROFILE_02(ProfileSource.SOURCE.profile02());
+        //PROFILE_03(ProfileSource.SOURCE.profile03());
 
         DiagramProfile diagramProfile;
 
@@ -138,5 +139,8 @@ public class DiagramColours implements DiagramProfileChangedHandler {
 
         @Source("profile_02.json")
         TextResource profile02();
+
+        /*@Source("profile_03.json")
+        TextResource profile03();*/
     }
 }

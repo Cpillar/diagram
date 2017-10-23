@@ -10,11 +10,14 @@ import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.user.client.Cookies;
 import com.google.gwt.user.client.ui.*;
+import org.reactome.web.analysis.client.model.EntityStatistics;
 import org.reactome.web.analysis.client.model.ExpressionSummary;
 import org.reactome.web.diagram.common.PwpButton;
+import org.reactome.web.diagram.data.content.Content;
 import org.reactome.web.diagram.data.graph.model.GraphComplex;
 import org.reactome.web.diagram.data.graph.model.GraphEntitySet;
 import org.reactome.web.diagram.data.graph.model.GraphObject;
+import org.reactome.web.diagram.data.graph.model.GraphPathway;
 import org.reactome.web.diagram.data.interactors.model.DiagramInteractor;
 import org.reactome.web.diagram.data.interactors.model.DynamicLink;
 import org.reactome.web.diagram.data.interactors.model.InteractorEntity;
@@ -38,7 +41,7 @@ import java.util.List;
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
  */
 public class ExpressionLegend extends LegendPanel implements ClickHandler, MouseOverHandler, MouseOutHandler,
-        AnalysisResultRequestedHandler, AnalysisResultLoadedHandler, AnalysisResetHandler, DiagramRequestedHandler,
+        AnalysisResultRequestedHandler, AnalysisResultLoadedHandler, AnalysisResetHandler, ContentRequestedHandler,
         ExpressionValueHoveredHandler, AnalysisProfileChangedHandler, ExpressionColumnChangedHandler,
         GraphObjectSelectedHandler, GraphObjectHoveredHandler, InteractorHoveredHandler {
 
@@ -57,13 +60,14 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
     private double min;
     private double max;
 
+    private Content.Type type; //This is temporal
+
     public ExpressionLegend(EventBus eventBus) {
         super(eventBus);
         this.gradient = createCanvas(30, 200);
         this.flag = createCanvas(50, 210);
 
         //Setting the legend style
-//        getElement().getStyle().setPosition(com.google.gwt.dom.client.Style.Position.ABSOLUTE);
         addStyleName(RESOURCES.getCSS().expressionLegend());
 
         fillGradient();
@@ -108,12 +112,9 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
 
     @Override
     public void onAnalysisProfileChanged(AnalysisProfileChangedEvent event) {
-        Scheduler.get().scheduleDeferred(new Scheduler.ScheduledCommand() {
-            @Override
-            public void execute() {
-                fillGradient();
-                draw();
-            }
+        Scheduler.get().scheduleDeferred(() -> {
+            fillGradient();
+            draw();
         });
     }
 
@@ -167,7 +168,7 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
     }
 
     @Override
-    public void onDiagramRequested(DiagramRequestedEvent event) {
+    public void onContentRequested(ContentRequestedEvent event) {
         this.expHovered = null;
         this.hovered = null;
         this.selected = null;
@@ -314,6 +315,13 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
 
     private List<Double> getExpressionValues(GraphObject graphObject, int column) {
         List<Double> expression = new LinkedList<>();
+
+        //This is temporal: in order to avoid drwing the pins for SVG diagrams (below the pValue threshold)
+        if (graphObject instanceof GraphPathway && type.equals(Content.Type.SVG)){
+            EntityStatistics es = ((GraphPathway) graphObject).getStatistics();
+            if (es != null && es.getpValue() > AnalysisColours.THRESHOLD) return expression; //which is empty
+        }
+
         if (graphObject != null) {
             if (graphObject instanceof GraphComplex) {
                 GraphComplex complex = (GraphComplex) graphObject;
@@ -335,7 +343,7 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
 
     private void initHandlers() {
         eventBus.addHandler(GraphObjectHoveredEvent.TYPE, this);
-        eventBus.addHandler(DiagramRequestedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
         eventBus.addHandler(GraphObjectSelectedEvent.TYPE, this);
         eventBus.addHandler(InteractorHoveredEvent.TYPE, this);
         eventBus.addHandler(AnalysisResultRequestedEvent.TYPE, this);
@@ -344,6 +352,9 @@ public class ExpressionLegend extends LegendPanel implements ClickHandler, Mouse
         eventBus.addHandler(ExpressionValueHoveredEvent.TYPE, this);
         eventBus.addHandler(AnalysisProfileChangedEvent.TYPE, this);
         eventBus.addHandler(ExpressionColumnChangedEvent.TYPE, this);
+
+        //This is temporal
+        eventBus.addHandler(ContentLoadedEvent.TYPE, event -> type = event.getContext().getContent().getType());
     }
 
     /*########### HELP INFO ##############*/

@@ -64,7 +64,8 @@ public class InteractorsResourceLoader implements RequestCallback {
                     JSONArray list = JSONParser.parseStrict(response.getText()).isArray();
                     for (int i = 0; i < list.size(); ++i) {
                         JSONObject object = list.get(i).isObject();
-                        resources.add(InteractorsFactory.getInteractorObject(RawResource.class, object.toString()));
+                        if (object.toString() != "BAR") // JP - PR temp removal of BAR resource
+                            resources.add(InteractorsFactory.getInteractorObject(RawResource.class, object.toString()));
                     }
                 } catch (InteractorsException e) {
                     this.handler.onInteractorsResourcesLoadException(e.getMessage());

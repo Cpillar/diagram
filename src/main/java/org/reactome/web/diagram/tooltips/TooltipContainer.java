@@ -5,8 +5,9 @@ import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.ui.AbsolutePanel;
-import org.reactome.web.diagram.data.DiagramContext;
+import org.reactome.web.diagram.data.Context;
 import org.reactome.web.diagram.data.graph.model.GraphEntityWithAccessionedSequence;
+import org.reactome.web.diagram.data.graph.model.GraphObject;
 import org.reactome.web.diagram.data.graph.model.GraphPhysicalEntity;
 import org.reactome.web.diagram.data.graph.model.GraphSimpleEntity;
 import org.reactome.web.diagram.data.interactors.common.DiagramBox;
@@ -21,10 +22,12 @@ import org.reactome.web.diagram.handlers.*;
 
 import java.util.Objects;
 
+import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
+
 /**
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
  */
-public class TooltipContainer extends AbsolutePanel implements DiagramRequestedHandler, DiagramLoadedHandler,
+public class TooltipContainer extends AbsolutePanel implements ContentRequestedHandler, ContentLoadedHandler,
         GraphObjectHoveredHandler, EntityDecoratorHoveredHandler, InteractorHoveredHandler, InteractorDraggedHandler,
         DiagramZoomHandler, DiagramPanningHandler {
 
@@ -32,7 +35,7 @@ public class TooltipContainer extends AbsolutePanel implements DiagramRequestedH
     private static final double ZOOM_THRESHOLD = 1.2;
 
     private EventBus eventBus;
-    private DiagramContext context;
+    private Context context;
     private Object hovered;
 
     private Timer hoveredTimer;
@@ -60,9 +63,9 @@ public class TooltipContainer extends AbsolutePanel implements DiagramRequestedH
     private void initHandlers() {
         eventBus.addHandler(GraphObjectHoveredEvent.TYPE, this);
         eventBus.addHandler(EntityDecoratorHoveredEvent.TYPE, this);
-        eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
+        eventBus.addHandler(ContentLoadedEvent.TYPE, this);
         eventBus.addHandler(DiagramPanningEvent.TYPE, this);
-        eventBus.addHandler(DiagramRequestedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
         eventBus.addHandler(DiagramZoomEvent.TYPE, this);
         eventBus.addHandler(InteractorHoveredEvent.TYPE, this);
         eventBus.addHandler(InteractorDraggedEvent.TYPE, this);
@@ -104,8 +107,10 @@ public class TooltipContainer extends AbsolutePanel implements DiagramRequestedH
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
-        this.context = event.getContext();
+    public void onContentLoaded(ContentLoadedEvent event) {
+        if (event.getContext().getContent().getType() == DIAGRAM) {
+            this.context = event.getContext();
+        }
     }
 
     @Override
@@ -117,7 +122,7 @@ public class TooltipContainer extends AbsolutePanel implements DiagramRequestedH
     }
 
     @Override
-    public void onDiagramRequested(DiagramRequestedEvent event) {
+    public void onContentRequested(ContentRequestedEvent event) {
         this.context = null;
     }
 
@@ -186,11 +191,13 @@ public class TooltipContainer extends AbsolutePanel implements DiagramRequestedH
                     return;
                 }
                 NodeProperties prop = NodePropertiesFactory.transform(node.getProp(), factor, offset);
-                GraphPhysicalEntity obj = node.getGraphObject();
+                GraphObject obj = node.getGraphObject();
                 if (obj instanceof GraphEntityWithAccessionedSequence) {
-                    tooltip.setText(node.getDisplayName() + (obj.getIdentifier() != null ? " (" + obj.getIdentifier() + ")" : ""));
+                    GraphPhysicalEntity pe = (GraphPhysicalEntity) obj;
+                    tooltip.setText(node.getDisplayName() + (pe.getIdentifier() != null ? " (" + pe.getIdentifier() + ")" : ""));
                 }else if (obj instanceof GraphSimpleEntity) {
-                    tooltip.setText(node.getDisplayName() + (obj.getIdentifier() != null ? " (CHEBI:" + obj.getIdentifier() + ")" : ""));
+                    GraphPhysicalEntity pe = (GraphPhysicalEntity) obj;
+                    tooltip.setText(node.getDisplayName() + (pe.getIdentifier() != null ? " (CHEBI:" + pe.getIdentifier() + ")" : ""));
                 } else {
                     tooltip.setText(node.getDisplayName());
                 }

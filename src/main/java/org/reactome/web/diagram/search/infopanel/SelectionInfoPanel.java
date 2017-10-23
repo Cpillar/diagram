@@ -4,43 +4,41 @@ import com.google.gwt.core.client.GWT;
 import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.CssResource;
-import org.reactome.web.diagram.data.DiagramContext;
+import org.reactome.web.diagram.data.Context;
 import org.reactome.web.diagram.data.graph.model.GraphObject;
 import org.reactome.web.diagram.data.interactors.model.InteractorSearchResult;
-import org.reactome.web.diagram.events.DiagramLoadRequestEvent;
-import org.reactome.web.diagram.events.DiagramLoadedEvent;
-import org.reactome.web.diagram.handlers.DiagramLoadRequestHandler;
-import org.reactome.web.diagram.handlers.DiagramLoadedHandler;
+import org.reactome.web.diagram.events.ContentLoadedEvent;
+import org.reactome.web.diagram.events.ContentRequestedEvent;
+import org.reactome.web.diagram.handlers.ContentLoadedHandler;
+import org.reactome.web.diagram.handlers.ContentRequestedHandler;
 import org.reactome.web.diagram.search.SearchResultObject;
 import org.reactome.web.diagram.search.events.SuggestionSelectedEvent;
 import org.reactome.web.diagram.search.handlers.SuggestionSelectedHandler;
 import org.reactome.web.diagram.search.panels.AbstractAccordionPanel;
 
+import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
+
 /**
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
  */
 public class SelectionInfoPanel extends AbstractAccordionPanel implements SuggestionSelectedHandler,
-        DiagramLoadedHandler, DiagramLoadRequestHandler {
+        ContentRequestedHandler, ContentLoadedHandler {
     private EventBus eventBus;
-    private DiagramContext context;
+    private Context context;
 
     public SelectionInfoPanel(EventBus eventBus) {
         this.eventBus = eventBus;
         this.setStyleName(RESOURCES.getCSS().container());
 
-        eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
-        eventBus.addHandler(DiagramLoadRequestEvent.TYPE, this);
-    }
-
-
-    @Override
-    public void onDiagramLoadRequest(DiagramLoadRequestEvent event) {
-        context = null;
+        eventBus.addHandler(ContentLoadedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
-        context = event.getContext();
+    public void onContentLoaded(ContentLoadedEvent event) {
+        if (event.getContext().getContent().getType() == DIAGRAM) {
+            context = event.getContext();
+        }
     }
 
     @Override
@@ -61,6 +59,11 @@ public class SelectionInfoPanel extends AbstractAccordionPanel implements Sugges
     static {
         RESOURCES = GWT.create(Resources.class);
         RESOURCES.getCSS().ensureInjected();
+    }
+
+    @Override
+    public void onContentRequested(ContentRequestedEvent event) {
+        context = null;
     }
 
     public interface Resources extends ClientBundle {

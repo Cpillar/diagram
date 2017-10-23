@@ -1,8 +1,6 @@
 package org.reactome.web.diagram.controls.top.illustrations;
 
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.ClickHandler;
 import com.google.gwt.event.shared.EventBus;
 import com.google.gwt.resources.client.ClientBundle;
 import com.google.gwt.resources.client.CssResource;
@@ -15,12 +13,12 @@ import org.reactome.web.diagram.controls.top.common.AbstractMenuDialog;
 import org.reactome.web.diagram.data.graph.model.GraphObject;
 import org.reactome.web.diagram.data.graph.model.GraphPathway;
 import org.reactome.web.diagram.data.graph.model.GraphSubpathway;
+import org.reactome.web.diagram.events.ContentLoadedEvent;
 import org.reactome.web.diagram.events.ControlActionEvent;
-import org.reactome.web.diagram.events.DiagramLoadedEvent;
 import org.reactome.web.diagram.events.GraphObjectSelectedEvent;
 import org.reactome.web.diagram.events.IllustrationSelectedEvent;
+import org.reactome.web.diagram.handlers.ContentLoadedHandler;
 import org.reactome.web.diagram.handlers.ControlActionHandler;
-import org.reactome.web.diagram.handlers.DiagramLoadedHandler;
 import org.reactome.web.diagram.handlers.GraphObjectSelectedHandler;
 import org.reactome.web.diagram.util.Console;
 import org.reactome.web.pwp.model.classes.DatabaseObject;
@@ -34,7 +32,7 @@ import org.reactome.web.pwp.model.handlers.DatabaseObjectLoadedHandler;
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
  */
 public class DiagramIllustrations extends AbstractMenuDialog implements ControlActionHandler,
-        DiagramLoadedHandler, GraphObjectSelectedHandler {
+        ContentLoadedHandler, GraphObjectSelectedHandler {
 
     private EventBus eventBus;
 
@@ -59,7 +57,7 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
+    public void onContentLoaded(ContentLoadedEvent event) {
         initialise();
         setIllustrations(event.getContext().getContent().getDbId(), main);
     }
@@ -78,9 +76,9 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
         setIllustrations(dbId, other);
     }
 
-    private void setIllustrations(Long dbId, final FlowPanel panel){
+    private void setIllustrations(Long dbId, final FlowPanel panel) {
         panel.clear();
-        if(dbId==null) return;
+        if (dbId == null) return;
         Label loadingLbl = new Label("Loading...");
         loadingLbl.setStyleName(RESOURCES.getCSS().loading());
         panel.add(loadingLbl);
@@ -120,38 +118,41 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
     }
 
     private Widget getIllustration(Pathway pathway, final String url) {
+        FlowPanel fp = new FlowPanel();
+        fp.setStyleName(RESOURCES.getCSS().illustration());
         if (url != null && !url.isEmpty()) {
-            FlowPanel fp = new FlowPanel();
-            fp.setStyleName(RESOURCES.getCSS().illustration());
             Image image = new Image(RESOURCES.illustration());
             fp.add(image);
             Label label = new Label(pathway.getDisplayName());
             label.setText(pathway.getDisplayName());
             fp.add(label);
             Anchor anchor = new Anchor(SafeHtmlUtils.fromTrustedString(fp.toString()), url);
-            anchor.addClickHandler(new ClickHandler() {
-                @Override
-                public void onClick(ClickEvent event) {
-                    if (!event.isMetaKeyDown() && !event.isControlKeyDown()) event.preventDefault();
-                    event.stopPropagation();
-                    hide();
-                    eventBus.fireEventFromSource(new IllustrationSelectedEvent(url), DiagramIllustrations.this);
-                }
+            anchor.addClickHandler(event -> {
+                if (!event.isMetaKeyDown() && !event.isControlKeyDown()) event.preventDefault();
+                event.stopPropagation();
+                hide();
+                eventBus.fireEventFromSource(new IllustrationSelectedEvent(url), DiagramIllustrations.this);
             });
             return anchor;
         } else {
-            return getErrorMsg("No illustrations for " + pathway.getDisplayName());
+            Image image = new Image(RESOURCES.illustrationDisabled());
+            fp.add(image);
+            Label label = new Label(pathway.getDisplayName());
+            label.setText("No illustrations for " + pathway.getDisplayName());
+            label.setStyleName(RESOURCES.getCSS().error());
+            fp.add(label);
+            return fp;
         }
     }
 
-    private Widget getErrorMsg(String msg){
+    private Widget getErrorMsg(String msg) {
         Label label = new Label(msg);
         label.setTitle(msg);
         label.setStyleName(RESOURCES.getCSS().error());
         return label;
     }
 
-    private void initialise(){
+    private void initialise() {
         clear();
         main.clear();
         add(main);
@@ -161,12 +162,13 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
 
     private void initHandlers() {
         this.eventBus.addHandler(ControlActionEvent.TYPE, this);
-        this.eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
+        this.eventBus.addHandler(ContentLoadedEvent.TYPE, this);
         this.eventBus.addHandler(GraphObjectSelectedEvent.TYPE, this);
     }
 
 
     public static Resources RESOURCES;
+
     static {
         RESOURCES = GWT.create(Resources.class);
         RESOURCES.getCSS().ensureInjected();
@@ -178,6 +180,9 @@ public class DiagramIllustrations extends AbstractMenuDialog implements ControlA
 
         @Source("images/illustration.png")
         ImageResource illustration();
+
+        @Source("images/illustration_disabled.png")
+        ImageResource illustrationDisabled();
     }
 
     @CssResource.ImportedWithPrefix("diagram-DiagramIllustrations")

@@ -7,8 +7,8 @@ import com.google.gwt.user.client.Timer;
 import com.google.gwt.user.client.ui.*;
 import org.reactome.web.diagram.client.DiagramFactory;
 import org.reactome.web.diagram.client.DiagramViewer;
-import org.reactome.web.diagram.events.DiagramLoadedEvent;
-import org.reactome.web.diagram.handlers.DiagramLoadedHandler;
+import org.reactome.web.diagram.events.ContentLoadedEvent;
+import org.reactome.web.diagram.handlers.ContentLoadedHandler;
 import org.reactome.web.diagram.util.Console;
 
 /**
@@ -17,9 +17,9 @@ import org.reactome.web.diagram.util.Console;
 public class WidgetTest implements EntryPoint {
 
     private final DiagramViewer diagram;
-    private static String currentPathway = "R-HSA-5205647";
+    private static String currentPathway = "R-HSA-6806667";
 //    private static String currentPathway = "R-HSA-5693567"; //Big one with plenty of overlap
-    private static String currentAnalysis = "MjAxNjA3MjEwOTAzNTFfOQ%3D%3D";
+    private static String currentAnalysis = "MjAxNjA5MzAwNTU3MjdfMg%3D%3D";
 
     private TextBox pathwayTB;
     private TextBox analysisTokenTB;
@@ -28,7 +28,7 @@ public class WidgetTest implements EntryPoint {
 //        DiagramFactory.SERVER = "fakeserver.com";
         DiagramFactory.CONSOLE_VERBOSE = true;
         DiagramFactory.EVENT_BUS_VERBOSE = true;
-//                DiagramFactory.SHOW_INFO = true;
+//      DiagramFactory.SHOW_INFO = true;
         diagram = DiagramFactory.createDiagramViewer();
     }
 
@@ -46,10 +46,11 @@ public class WidgetTest implements EntryPoint {
                         pathwayTB.setValue(currentPathway);
                     }
                 });
-                diagram.addDiagramLoadedHandler(new DiagramLoadedHandler() {
+                diagram.addDiagramLoadedHandler(new ContentLoadedHandler() {
                     @Override
-                    public void onDiagramLoaded(DiagramLoadedEvent event) {
+                    public void onContentLoaded(ContentLoadedEvent event) {
 //                        diagram.flagItems("NODAL");
+                        diagram.flagItems("F13B");
                     }
                 });
             }
@@ -93,8 +94,8 @@ public class WidgetTest implements EntryPoint {
 
         fp.add(new Label("R-HSA-1181150"));
         fp.add(new Label("Reactions"));
-        fp.add(getSelectionButton("R-HSA-1181152", "Cleavage of NODAL proprotein"));
-        fp.add(getSelectionButton("R-HSA-1535903", "Phospho R-SMAD(SMAD2/3):CO-SMAD(SMAD4):FOXO3 binds FoxO3a-binding elements"));
+        fp.add(getSelectionButton("R-HSA-75153", "Cleavage of NODAL proprotein"));
+        fp.add(getSelectionButton("R-HSA-5357769", "Phospho R-SMAD(SMAD2/3):CO-SMAD(SMAD4):FOXO3 binds FoxO3a-binding elements"));
 
         fp.add(new Label("--"));
         fp.add(new Label("Sets"));
@@ -125,7 +126,9 @@ public class WidgetTest implements EntryPoint {
         fp.add(new Button("ORA 1", new ClickHandler() {
             @Override
             public void onClick(ClickEvent event) {
-                diagram.setAnalysisToken("MjAxNjAzMjIxMzM5NDFfMTA%253D","TOTAL");
+//                No interactors: MjAxNzAxMzEwNTEyMDJfMg==
+//                Interactors: MjAxNzAyMDcwOTMwMDVfMw==
+                diagram.setAnalysisToken("MjAxNzAxMzEwNTEyMDJfMg==","TOTAL");
             }
         }));
 
@@ -137,7 +140,7 @@ public class WidgetTest implements EntryPoint {
         fp.add(new Button("Exp 1", new ClickHandler() {
             @Override
             public void onClick(ClickEvent event) {
-                diagram.setAnalysisToken("MjAxNjAzMjIxNjM0NTdfMTI%253D","TOTAL");
+                diagram.setAnalysisToken("MjAxNzAxMzEwNTE0MDdfMw==","TOTAL");
             }
         }));
 
@@ -177,6 +180,7 @@ public class WidgetTest implements EntryPoint {
         fp.add(getLoadButton("R-HSA-3645790", ""));
         fp.add(new InlineLabel(" "));
         fp.add(getLoadButton("R-HSA-109581", "Apoptosis"));
+        fp.add(getLoadButton("R-HSA-109582", "Hemostasis"));
         fp.add(new InlineLabel(" "));
         fp.add(getLoadButton("R-HSA-5637815", "Signaling by Ligand-Responsive EGFR Variants in Cancer"));
         fp.add(getLoadButton("R-HSA-2219530", "Constitutive Signaling by Aberrant PI3K in Cancer"));

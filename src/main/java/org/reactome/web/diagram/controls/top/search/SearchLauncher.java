@@ -31,7 +31,7 @@ import java.util.List;
  * @author Kostas Sidiropoulos <ksidiro@ebi.ac.uk>
  */
 public class SearchLauncher extends AbsolutePanel implements ClickHandler,
-        DiagramLoadedHandler, DiagramRequestedHandler, LayoutLoadedHandler, SearchBoxUpdatedHandler,
+        ContentLoadedHandler, ContentRequestedHandler, LayoutLoadedHandler, SearchBoxUpdatedHandler,
         InteractorsResourceChangedHandler, InteractorsLoadedHandler,
         SearchBoxArrowKeysHandler, SearchKeyPressedHandler {
 
@@ -113,14 +113,14 @@ public class SearchLauncher extends AbsolutePanel implements ClickHandler,
     }
 
     @Override
-    public void onDiagramRequested(DiagramRequestedEvent event) {
+    public void onContentRequested(ContentRequestedEvent event) {
         this.input.setValue(""); // Clear searchbox value and fire the proper event
         this.collapsePanel();
         this.suggestionsProvider = null;
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
+    public void onContentLoaded(ContentLoadedEvent event) {
         this.searchBtn.setEnabled(true);
         this.suggestionsProvider = new SuggestionsProviderImpl(event.getContext());
         fireEvent(new SuggestionResetEvent());
@@ -148,10 +148,13 @@ public class SearchLauncher extends AbsolutePanel implements ClickHandler,
 
     @Override
     public void onSearchKeyPressed(SearchKeyPressedEvent event) {
-        if (!isExpanded) {
-            expandPanel();
-        } else {
-            collapsePanel();
+        //Expand only if search is enabled
+        if(searchBtn.isEnabled()) {
+            if (!isExpanded) {
+                expandPanel();
+            } else {
+                collapsePanel();
+            }
         }
     }
 
@@ -181,8 +184,8 @@ public class SearchLauncher extends AbsolutePanel implements ClickHandler,
         this.input.addSearchBoxUpdatedHandler(this);
         this.input.addSearchBoxArrowKeysHandler(this);
 
-        eventBus.addHandler(DiagramRequestedEvent.TYPE, this);
-        eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
+        eventBus.addHandler(ContentLoadedEvent.TYPE, this);
         eventBus.addHandler(LayoutLoadedEvent.TYPE, this);
         eventBus.addHandler(InteractorsResourceChangedEvent.TYPE, this);
         eventBus.addHandler(InteractorsLoadedEvent.TYPE, this);

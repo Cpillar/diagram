@@ -9,7 +9,7 @@ import com.google.gwt.user.client.ui.FlowPanel;
 import com.google.gwt.user.client.ui.Image;
 import com.google.gwt.user.client.ui.InlineLabel;
 import org.reactome.web.diagram.common.PwpButton;
-import org.reactome.web.diagram.data.DiagramContext;
+import org.reactome.web.diagram.data.Context;
 import org.reactome.web.diagram.data.InteractorsContent;
 import org.reactome.web.diagram.data.interactors.common.OverlayResource;
 import org.reactome.web.diagram.data.interactors.raw.RawInteractor;
@@ -21,11 +21,13 @@ import org.reactome.web.diagram.util.slider.Slider;
 import org.reactome.web.diagram.util.slider.SliderValueChangedEvent;
 import org.reactome.web.diagram.util.slider.SliderValueChangedHandler;
 
+import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
+
 /**
  * @author Kostas Sidiropoulos <ksidiro@ebi.ac.uk>
  */
 public class InteractorsControl extends LegendPanel implements ClickHandler, SliderValueChangedHandler,
-        DiagramRequestedHandler, DiagramLoadedHandler,
+        ContentRequestedHandler, ContentLoadedHandler,
         InteractorsResourceChangedHandler, InteractorsLoadedHandler, InteractorsErrorHandler, InteractorsLayoutUpdatedHandler {
 
     @SuppressWarnings("FieldCanBeLocal")
@@ -40,7 +42,7 @@ public class InteractorsControl extends LegendPanel implements ClickHandler, Sli
 
     private OverlayResource currentOverlayResource;
 
-    private DiagramContext context;
+    private Context context;
     private Image loadingIcon;
     private InlineLabel message;
     private InlineLabel summaryLb;
@@ -96,15 +98,17 @@ public class InteractorsControl extends LegendPanel implements ClickHandler, Sli
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
-        context = event.getContext();
-        if (currentOverlayResource!=null && context.getInteractors().isInteractorResourceCached(currentOverlayResource.getIdentifier())) {
-            update();
+    public void onContentLoaded(ContentLoadedEvent event) {
+        if (event.getContext().getContent().getType() == DIAGRAM) {
+            context = event.getContext();
+            if (currentOverlayResource != null && context.getInteractors().isInteractorResourceCached(currentOverlayResource.getIdentifier())) {
+                update();
+            }
         }
     }
 
     @Override
-    public void onDiagramRequested(DiagramRequestedEvent event) {
+    public void onContentRequested(ContentRequestedEvent event) {
         context = null;
         setVisible(false);
     }
@@ -235,8 +239,8 @@ public class InteractorsControl extends LegendPanel implements ClickHandler, Sli
     }
 
     private void initHandlers() {
-        eventBus.addHandler(DiagramRequestedEvent.TYPE, this);
-        eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
+        eventBus.addHandler(ContentLoadedEvent.TYPE, this);
         eventBus.addHandler(InteractorsResourceChangedEvent.TYPE, this);
         eventBus.addHandler(InteractorsLayoutUpdatedEvent.TYPE, this);
         eventBus.addHandler(InteractorsLoadedEvent.TYPE, this);

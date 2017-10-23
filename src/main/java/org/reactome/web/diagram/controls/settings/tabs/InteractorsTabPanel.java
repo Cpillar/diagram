@@ -17,7 +17,7 @@ import org.reactome.web.diagram.common.ConfirmationButton;
 import org.reactome.web.diagram.common.IconButton;
 import org.reactome.web.diagram.context.popups.InsertItemDialog;
 import org.reactome.web.diagram.controls.settings.common.InfoLabel;
-import org.reactome.web.diagram.data.DiagramContext;
+import org.reactome.web.diagram.data.Context;
 import org.reactome.web.diagram.data.InteractorsContent;
 import org.reactome.web.diagram.data.interactors.common.OverlayResource;
 import org.reactome.web.diagram.data.interactors.custom.ResourcesManager;
@@ -34,18 +34,20 @@ import org.reactome.web.diagram.util.interactors.InteractorsExporter;
 
 import java.util.*;
 
+import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
+
 /**
  * @author Kostas Sidiropoulos <ksidiro@ebi.ac.uk>
  */
 @SuppressWarnings("FieldCanBeLocal")
 public class InteractorsTabPanel extends Composite implements ClickHandler, ValueChangeHandler, InteractorsResourceLoader.Handler,
         InteractorsResourceChangedHandler, InteractorsLoadedHandler, InteractorsErrorHandler,
-        DiagramLoadedHandler, DiagramRequestedHandler,
+        ContentLoadedHandler, ContentRequestedHandler,
         InsertItemDialog.Handler {
     private static int RESOURCES_REFRESH = 600000; // Update every 10 minutes
 
     private EventBus eventBus;
-    private DiagramContext context;
+    private Context context;
     private Map<String, OverlayResource> resourcesMap = new HashMap<>();
     private OverlayResource selectedResource;
     private OverlayResource staticResource;
@@ -168,14 +170,16 @@ public class InteractorsTabPanel extends Composite implements ClickHandler, Valu
     }
 
     @Override
-    public void onDiagramRequested(DiagramRequestedEvent event) {
+    public void onContentRequested(ContentRequestedEvent event) {
         context = null;
         enableDownloadButton(false);
     }
 
     @Override
-    public void onDiagramLoaded(DiagramLoadedEvent event) {
-        context = event.getContext();
+    public void onContentLoaded(ContentLoadedEvent event) {
+        if (event.getContext().getContent().getType() == DIAGRAM) {
+            context = event.getContext();
+        }
     }
 
     @Override
@@ -258,8 +262,8 @@ public class InteractorsTabPanel extends Composite implements ClickHandler, Valu
     }
 
     private void initialiseHandlers() {
-        eventBus.addHandler(DiagramLoadedEvent.TYPE, this);
-        eventBus.addHandler(DiagramRequestedEvent.TYPE, this);
+        eventBus.addHandler(ContentLoadedEvent.TYPE, this);
+        eventBus.addHandler(ContentRequestedEvent.TYPE, this);
         eventBus.addHandler(InteractorsLoadedEvent.TYPE, this);
         eventBus.addHandler(InteractorsErrorEvent.TYPE, this);
         eventBus.addHandler(InteractorsResourceChangedEvent.TYPE, this);
