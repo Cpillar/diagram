@@ -22,7 +22,8 @@ public abstract class DiagramFactory {
     //It has a value by default but it can be set to a different one so in every load
     //the "user preferred" interactors resource will be selected
     public static String INTERACTORS_INITIAL_RESOURCE = "static"; // -> null here means DO NOT LOAD interactors
-    public static String INTERACTORS_INITIAL_RESOURCE_NAME = "IntAct/Static"; // --> it should be null if the one above is null
+    //public static String INTERACTORS_INITIAL_RESOURCE_NAME = "IntAct/Static"; // --> it should be null if the one above is null
+    public static String INTERACTORS_INITIAL_RESOURCE_NAME = "Plant Interactome"; // JP --> it should be null if the one above is null
 
     //The Reactome use case does not need to be sensible to SCROLL
     //This variable is meant to set up by DiagramJs or other resources using the GWT widget
