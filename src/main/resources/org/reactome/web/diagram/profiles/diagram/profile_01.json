@@ -8,7 +8,7 @@
     "flag": "#FF00FF",
     "trigger": "#6666FF",
     "text": "#000000",
-    "button:": "#00FF00",
+    "button": "#00FF00",
     "disease": "#FF0000"
   },
   "attachment": {
@@ -35,6 +35,17 @@
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },
+  "chemicaldrug": {
+    "fill": "#ABACD0",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#6C6C6C",
+    "lighterStroke": "#000000",
+    "text": "#A00000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
   "compartment": {
     "fill": "rgba(248, 244, 244, 0.5)",
     "fadeOutFill": "rgba(248, 244, 244, 0.5)",
@@ -58,6 +69,18 @@
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },
+  "complexdrug": {
+    "fill": "#ABACD0",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#6C6C6C",
+    "lighterStroke": "#000000",
+    "lineWidth": "0.5",
+    "text": "#A00000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
   "entity": {
     "fill": "#CCFFCC",
     "fadeOutFill": "#CCDECC",
@@ -77,6 +100,17 @@
     "fadeOutStroke": "#000000",
     "lighterStroke": "#6C6C6C",
     "text": "#000000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
+  "entitysetdrug": {
+    "fill": "#ABACD0",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#6C6C6C",
+    "lighterStroke": "#000000",
+    "text": "#A00000",
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },
@@ -160,6 +194,17 @@
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },
+  "encapsulatednode": {
+    "fill": "#CCFFCC",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#000000",
+    "lighterStroke": "#6C6C6C",
+    "text": "#000000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
   "protein": {
     "fill": "#CCFFCC",
     "fadeOutFill": "#CCDECC",
@@ -168,6 +213,17 @@
     "fadeOutStroke": "#000000",
     "lighterStroke": "#000000",
     "text": "#000000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
+  "proteindrug": {
+    "fill": "#ABACD0",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#6C6C6C",
+    "lighterStroke": "#000000",
+    "text": "#A00000",
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },
@@ -191,6 +247,17 @@
     "fadeOutStroke": "#000000",
     "lighterStroke": "#6C6C6C",
     "text": "#000000",
+    "fadeOutText": "#000000",
+    "lighterText": "#000000"
+  },
+  "rnadrug": {
+    "fill": "#ABACD0",
+    "fadeOutFill": "#CCDECC",
+    "lighterFill": "#E2FFE2",
+    "stroke": "#000000",
+    "fadeOutStroke": "#6C6C6C",
+    "lighterStroke": "#000000",
+    "text": "#A00000",
     "fadeOutText": "#000000",
     "lighterText": "#000000"
   },

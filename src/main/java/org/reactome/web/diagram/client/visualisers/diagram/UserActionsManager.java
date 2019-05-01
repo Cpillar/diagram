@@ -1,6 +1,5 @@
 package org.reactome.web.diagram.client.visualisers.diagram;
 
-import com.google.gwt.dom.client.Element;
 import com.google.gwt.dom.client.NativeEvent;
 import com.google.gwt.dom.client.Style;
 import com.google.gwt.dom.client.Touch;
@@ -16,6 +15,7 @@ import org.reactome.web.diagram.data.layout.DiagramObject;
 import org.reactome.web.diagram.data.layout.impl.CoordinateFactory;
 import org.reactome.web.diagram.renderers.common.HoveredItem;
 import org.reactome.web.diagram.util.actions.MouseActionsHandlers;
+import org.reactome.web.diagram.util.position.MousePosition;
 
 /**
  * @author Antonio Fabregat <fabregat@ebi.ac.uk>
@@ -109,27 +109,28 @@ class UserActionsManager implements MouseActionsHandlers {
                 handler.showDialog(item);
                 break;
             default:
-                setMouseDownPosition(event.getRelativeElement(), event);
+                setMouseDownPosition(event);
         }
     }
 
     @Override
     public void onMouseMove(MouseMoveEvent event) {
-        setMousePosition(event.getRelativeElement(), event);
+        setMousePosition(event);
         if (mouseDown != null) {
-            canvas.setCursor(Style.Cursor.MOVE);
-            Element element = event.getRelativeElement();
-            Coordinate mouse = CoordinateFactory.get(event.getRelativeX(element), event.getRelativeY(element));
+            Coordinate mouse = CoordinateFactory.get(MousePosition.getX(event), MousePosition.getY(event));
             Coordinate delta = mouse.minus(mouseDown);
-            if(hoveredInteractor == null) {
-                diagramMoved = true;
-                handler.padding(delta);
+            if (isDeltaValid(delta,2)) {
+                canvas.setCursor(Style.Cursor.MOVE);
+                if (hoveredInteractor == null) {
+                    diagramMoved = true;
+                    handler.padding(delta);
 
-            } else {
-                interactorDragged = true;
-                handler.dragInteractor(hoveredInteractor, delta);
+                } else {
+                    interactorDragged = true;
+                    handler.dragInteractor(hoveredInteractor, delta);
+                }
+                setMouseDownPosition(event);
             }
-            setMouseDownPosition(event.getRelativeElement(), event);
         }
     }
 
@@ -159,7 +160,7 @@ class UserActionsManager implements MouseActionsHandlers {
 
         event.stopPropagation();
         event.preventDefault();
-        setMousePosition(event.getRelativeElement(), event);
+        setMousePosition(event);
         handler.mouseZoom(event.getDeltaY() * ZOOM_FACTOR);
     }
 
@@ -219,7 +220,7 @@ class UserActionsManager implements MouseActionsHandlers {
             } else {
                 Coordinate delta = mouseCurrent.minus(this.mouseDown);
                 // On mouse move is sometimes called for delta 0 (we cannot control that, but only consider it)
-                if (isDeltaValid(delta)) {
+                if (isDeltaValid(delta, 4)) {
                     handler.padding(delta);
                     this.mouseDown = mouseCurrent;
                     this.diagramMoved = true;                               //Selection is denied in case of panning
@@ -294,12 +295,12 @@ class UserActionsManager implements MouseActionsHandlers {
         return true;
     }
 
-    protected void setMouseDownPosition(Element element, MouseEvent event) {
-        this.mouseDown = CoordinateFactory.get(event.getRelativeX(element), event.getRelativeY(element));
+    protected void setMouseDownPosition(MouseEvent event) {
+        this.mouseDown = CoordinateFactory.get(MousePosition.getX(event), MousePosition.getY(event));
     }
 
-    protected void setMousePosition(Element element, MouseEvent event) {
-        Coordinate mouseCurrent = CoordinateFactory.get(event.getRelativeX(element), event.getRelativeY(element));
+    protected void setMousePosition(MouseEvent event) {
+        Coordinate mouseCurrent = CoordinateFactory.get(MousePosition.getX(event), MousePosition.getY(event));
         handler.setMousePosition(mouseCurrent);
     }
 
@@ -313,7 +314,7 @@ class UserActionsManager implements MouseActionsHandlers {
         return CoordinateFactory.get(x, y);
     }
 
-    private boolean isDeltaValid(Coordinate delta) {
-        return delta.getX() >= 4  || delta.getX() <= -4 || delta.getY() >= 4 || delta.getY() <= -4;
+    private boolean isDeltaValid(Coordinate delta, int threshold) {
+        return delta.getX() >= threshold  || delta.getX() <= -threshold || delta.getY() >= threshold || delta.getY() <= -threshold;
     }
 }

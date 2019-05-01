@@ -16,14 +16,20 @@ public interface DiagramProfile extends Serializable {
 
     DiagramProfileNode getChemical();
 
+    DiagramProfileNode getChemicaldrug();
+
     DiagramProfileNode getCompartment();
 
     DiagramProfileNode getComplex();
+
+    DiagramProfileNode getComplexdrug();
 
     @Deprecated
     DiagramProfileNode getEntity();
 
     DiagramProfileNode getEntityset();
+
+    DiagramProfileNode getEntitysetdrug();
 
     DiagramProfileNode getFlowline();
 
@@ -39,11 +45,17 @@ public interface DiagramProfile extends Serializable {
 
     DiagramProfileNode getProcessnode();
 
+    DiagramProfileNode getEncapsulatednode();
+
     DiagramProfileNode getProtein();
+
+    DiagramProfileNode getProteindrug();
 
     DiagramProfileNode getReaction();
 
     DiagramProfileNode getRna();
+
+    DiagramProfileNode getRnadrug();
 
     DiagramProfileNode getStoichiometry();
 

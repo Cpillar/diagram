@@ -35,7 +35,7 @@ import static org.reactome.web.diagram.data.content.Content.Type.DIAGRAM;
 public class InteractorsManager implements ContentLoadedHandler, ContentRequestedHandler,
         InteractorsCollapsedHandler, InteractorsResourceChangedHandler {
 
-    private static final int MAX_INTERACTORS = 10;
+    private static final int MAX_INTERACTORS = 60; // JP - we have more
 
     private EventBus eventBus;
 

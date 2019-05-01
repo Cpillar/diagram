@@ -21,15 +21,25 @@ public abstract class ProcessNodeAbstractRenderer extends NodeAbstractRenderer {
 
     @Override
     public void drawEnrichment(AdvancedContext2d ctx, OverlayContext overlay, DiagramObject item, Double factor, Coordinate offset) {
-        drawAnalysisResult(ctx, item, factor, offset);
+        drawAnalysisResult(ctx, overlay, item, factor, offset);
     }
 
     @Override
     public void drawExpression(AdvancedContext2d ctx, OverlayContext overlay, DiagramObject item, int t, double min, double max, Double factor, Coordinate offset){
-        drawAnalysisResult(ctx, item, factor, offset);
+        drawAnalysisResult(ctx, overlay, item, factor, offset);
     }
 
-    public abstract void drawAnalysisResult(AdvancedContext2d ctx, DiagramObject item, Double factor, Coordinate offset);
+    public abstract void drawAnalysisResult(AdvancedContext2d ctx, OverlayContext overlay, DiagramObject item, Double factor, Coordinate offset);
+
+    @Override
+    @SuppressWarnings("Duplicates")
+    public void highlight(AdvancedContext2d ctx, DiagramObject item, Double factor, Coordinate offset) {
+        if (!isVisible(item)) return;
+        Node node = (Node) item;
+        NodeProperties prop = NodePropertiesFactory.transform(node.getProp(), factor, offset);
+        shape(ctx, prop, node.getNeedDashedBorder());
+        ctx.stroke();
+    }
 
     @Override
     public void draw(AdvancedContext2d ctx, DiagramObject item, Double factor, Coordinate offset) {
@@ -87,4 +97,5 @@ public abstract class ProcessNodeAbstractRenderer extends NodeAbstractRenderer {
         ctx.setFont(RendererProperties.getFont(RendererProperties.WIDGET_FONT_SIZE));
         type.setTextProfile(ctx, DiagramColours.get().PROFILE.getProcessnode());
     }
+
 }

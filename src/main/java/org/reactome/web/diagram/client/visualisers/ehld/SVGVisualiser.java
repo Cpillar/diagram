@@ -53,9 +53,6 @@ import uk.ac.ebi.pwp.structures.quadtree.client.Box;
 
 import java.util.*;
 
-import static org.reactome.web.diagram.events.CanvasExportRequestedEvent.Option;
-
-
 /**
  * @author Kostas Sidiropoulos <ksidiro@ebi.ac.uk>
  */
@@ -159,9 +156,15 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     }
 
     @Override
-    public void exportView(Option option) {
+    public void exportView() {
         if (context != null) {
-            exportView(context.getContent().getStableId());
+
+            String sel = null;
+            if (selected != null) {
+                sel = selected.getId().replace("REGION-", "");
+            }
+
+            showExportDialog(context, sel, context.getFlagTerm());
         }
     }
 
@@ -231,6 +234,9 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
                 }
                 rtn = true;
             }
+        } else {
+            //In case the entity is not in the graph, any previous selection has to be reset.
+            resetSelection(true);
         }
         return rtn;
     }
@@ -1189,8 +1195,9 @@ public class SVGVisualiser extends AbstractSVGPanel implements Visualiser,
     }
 
     @Override
-    public void flagItems(Set<DiagramObject> flaggedItems){
+    public void flagItems(Set<DiagramObject> flaggedItems, Boolean includeInteractors){
         resetFlag();
+        this.includeInteractors = includeInteractors;
         for (DiagramObject diagramObject : flaggedItems) {
             if(diagramObject instanceof EHLDObject){
                 EHLDObject item = (EHLDObject) diagramObject;

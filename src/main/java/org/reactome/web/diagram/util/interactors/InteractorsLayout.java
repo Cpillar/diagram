@@ -19,9 +19,11 @@ public class InteractorsLayout {
     private static final double L = 2 * Math.PI;
     private static final double OFFSET = Math.PI / 2.0;
 
-    private static final int BOX_WIDTH = 45;
-    private static final int BOX_HEIGHT = 20;
-    private static final int RADIUS = 175;
+    //private static final int BOX_WIDTH = 45;
+    //private static final int BOX_HEIGHT = 20;
+    private static final int BOX_WIDTH = 38; // JP - shrinking to accommodate more interactors
+    private static final int BOX_HEIGHT = 10; // JP - shrinking to accommodate more interactors
+    private static final int RADIUS = 185;
 
     private Node node;
 

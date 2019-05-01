@@ -59,8 +59,6 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     private IllustrationPanel illustration;
     private Anchor watermark;
 
-    private String flagTerm;
-
     public static Timer windowScrolling = new Timer() {
         @Override
         public void run() { /* Nothing here */ }
@@ -153,7 +151,7 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     public void contentLoaded(final Context context) {
         this.context = context;
         setWatermarkVisible(true);
-        setWatermarkURL(context, null, this.flagTerm);
+        setWatermarkURL(context, null);
         setActiveVisualiser(context);
         activeVisualiser.contentLoaded(context);
     }
@@ -192,25 +190,28 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     }
 
     @Override
-    public void onDiagramExportRequested(CanvasExportRequestedEvent event) {
-        activeVisualiser.exportView(event.getOption());
+    public void onCanvasExportRequested(CanvasExportRequestedEvent event) {
+        activeVisualiser.exportView();
     }
 
     @Override
     public void onDiagramObjectsFlagRequested(DiagramObjectsFlagRequestedEvent event) {
-        setWatermarkURL(context, activeVisualiser.getSelected(), this.flagTerm = null);
+        context.setFlagTerm(null);
+        setWatermarkURL(context, activeVisualiser.getSelected());
         activeVisualiser.resetFlag();
     }
 
     @Override
     public void onDiagramObjectsFlagged(DiagramObjectsFlaggedEvent event) {
-        setWatermarkURL(context, activeVisualiser.getSelected(), this.flagTerm = event.getTerm());
-        activeVisualiser.flagItems(event.getFlaggedItems());
+        context.setFlagTerm(event.getTerm());
+        setWatermarkURL(context, activeVisualiser.getSelected());
+        activeVisualiser.flagItems(event.getFlaggedItems(), event.getIncludeInteractors());
     }
 
     @Override
     public void onDiagramObjectsFlagReset(DiagramObjectsFlagResetEvent event) {
-        setWatermarkURL(context, activeVisualiser.getSelected(), this.flagTerm = null);
+        context.setFlagTerm(null);
+        setWatermarkURL(context, activeVisualiser.getSelected());
         activeVisualiser.resetFlag();
     }
 
@@ -220,17 +221,17 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
             case FIT_ALL:       activeVisualiser.fitDiagram(true);  break;
             case ZOOM_IN:       activeVisualiser.zoomIn();                    break;
             case ZOOM_OUT:      activeVisualiser.zoomOut();                   break;
-            case UP:            activeVisualiser.padding(0, 10);      break;
-            case RIGHT:         activeVisualiser.padding(-10, 0);     break;
-            case DOWN:          activeVisualiser.padding(0, -10);     break;
-            case LEFT:          activeVisualiser.padding(10, 0);      break;
+            case UP:            activeVisualiser.padding(0, 10);     break;
+            case RIGHT:         activeVisualiser.padding(-10, 0);    break;
+            case DOWN:          activeVisualiser.padding(0, -10);    break;
+            case LEFT:          activeVisualiser.padding(10, 0);     break;
             case FIREWORKS:     overview();                                   break;
         }
     }
 
     @Override
     public void onGraphObjectSelected(final GraphObjectSelectedEvent event) {
-        setWatermarkURL(this.context, event.getGraphObject(), flagTerm);
+        setWatermarkURL(this.context, event.getGraphObject());
 //        selectItem(event.getGraphObject()); //TODO check this...
     }
 
@@ -277,12 +278,12 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
     }
 
     public void resetAnalysis() {
-        setWatermarkURL(this.context, activeVisualiser.getSelected(), this.flagTerm);
+        setWatermarkURL(this.context, activeVisualiser.getSelected());
         activeVisualiser.resetAnalysis();
     }
 
     public void loadAnalysis() {
-        setWatermarkURL(context, activeVisualiser.getSelected(), this.flagTerm);
+        setWatermarkURL(context, activeVisualiser.getSelected());
         activeVisualiser.loadAnalysis();
     }
 
@@ -299,7 +300,7 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
         activeVisualiser.fitDiagram(false);
     }
 
-    private void setWatermarkURL(Context context, GraphObject selection, String flag) {
+    private void setWatermarkURL(Context context, GraphObject selection) {
         if(watermark!=null) {
             StringBuilder href = new StringBuilder(DiagramFactory.WATERMARK_BASE_URL);
             String pathwayStId = context == null ? null : context.getContent().getStableId();
@@ -314,8 +315,8 @@ public class ViewerContainer extends AbsolutePanel implements RequiresResize,
                 if (analysisStatus != null) {
                     href.append("&DTAB=AN").append("&ANALYSIS=").append(analysisStatus.getToken()).append("&RESOURCE=").append(analysisStatus.getResource());
                 }
-                if (flag != null && !flag.isEmpty()) {
-                    href.append("&FLG=").append(flag);
+                if (context.getFlagTerm() != null && !context.getFlagTerm().isEmpty()) {
+                    href.append("&FLG=").append(context.getFlagTerm());
                 }
             }
             watermark.setHref(href.toString());

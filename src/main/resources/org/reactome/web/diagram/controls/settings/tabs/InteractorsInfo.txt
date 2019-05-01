@@ -1,1 +1,1 @@
-Select a resource to visualise protein–protein and protein–chemical interaction data as extensions to Reactome pathways.
+Select a resource to visualise protein–protein and protein–chemical interaction data as extensions to Reactome pathways. Number of interactors visible on diagram limited to 60; download full interaction results for this pathway on the Interactor Bar at the bottom of the diagram window.

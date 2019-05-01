@@ -186,6 +186,8 @@
     margin: 6px 0 0 20px;
     float: left;
     font-size: 12px;
+
+    line-height: normal !important;
 }
 
 .expressionLegend {
@@ -234,6 +236,8 @@
     display: inline-block;
     white-space: nowrap;
     max-width: 225px;
+
+    line-height: normal !important;
 }
 
 .slide {
@@ -249,22 +253,36 @@
 
 .flaggedItemsControl {
     /*centers in the middle*/
-    width: 260px;
-    margin-left:-130px; /* width and margin-left are related, please change both if needed */
+    width: 374px;
+    margin-left:-187px; /* width and margin-left are related, please change both if needed */
     left: 50%;
+    line-height: 30px;
 }
 
 .flaggedItemsControl span {
     margin: 6px 0 0 20px;
     float: left;
     font-size: 12px;
+
+    line-height: normal !important;
 }
 
 .flaggedItemsLabel {
-    width: 180px !important;
+    width: 160px !important;
     overflow:hidden;
     white-space:nowrap;
     text-overflow:ellipsis;
+}
+
+.flaggedItemsControl select {
+    vertical-align: text-bottom;
+    border: none;
+    margin: 5px 0 0 5px;
+    outline: none;
+    font-size: 12px;
+    width: 73px;
+    height: unset;
+    -webkit-appearance: menulist;
 }
 
 .flaggedItemsControlMovedUp {
