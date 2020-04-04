@@ -62,11 +62,11 @@ public class RightTopLauncherPanel extends FlowPanel implements ClickHandler, Co
 
         this.captureBtn = new PwpButton("Export image", RESOURCES.getCSS().camera(), this);
 
-        this.exportBtn = new PwpButton("Export to pptx", RESOURCES.getCSS().exportPPT(), this);
+        //this.exportBtn = new PwpButton("Export to pptx", RESOURCES.getCSS().exportPPT(), this);
 
         expContainer = new ExpandibleContainer("Select one export option", RESOURCES.getCSS().export());
         expContainer.addButton(captureBtn);
-        expContainer.addButton(exportBtn);
+        //expContainer.addButton(exportBtn);
         add(expContainer);
 
         this.diagramKeyBtn = new PwpButton("Diagram key", RESOURCES.getCSS().key(), this);
